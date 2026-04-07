@@ -12,7 +12,17 @@ const noticeRoutes = require('./routes/notices');
 
 const app = express();
 
-app.use(cors());
+// CORS configuration - Allow all origins in development, specific in production
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://leave-management-system.vercel.app', 'https://*.vercel.app', 'http://localhost:5173']
+    : true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Root route
