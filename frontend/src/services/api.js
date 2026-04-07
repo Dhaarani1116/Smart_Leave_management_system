@@ -62,4 +62,12 @@ export const notificationAPI = {
   markAllAsRead: () => api.put('/notifications/read-all'),
 };
 
+export const noticeAPI = {
+  getNotices: () => api.get('/notices'),
+  getSentNotices: () => api.get('/notices/sent'),
+  createNotice: (noticeData) => api.post('/notices', noticeData),
+  replyToNotice: (replyData) => api.post('/notices/reply', replyData),
+  deleteNotice: (id) => api.put(`/notices/${id}/delete`),
+};
+
 export default api;

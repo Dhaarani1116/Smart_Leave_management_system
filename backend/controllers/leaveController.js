@@ -262,13 +262,25 @@ const getPendingApprovals = async (req, res) => {
 
     // Build where clause - show leaves where current approver is this user
     // OR where this user is the temp approver
-    const whereClause = {
+    let whereClause = {
       status: { [Op.in]: ['Pending', 'In_Progress'] },
       [Op.or]: [
         { currentApproverId: userId },
         { tempApproverId: userId },
       ],
     };
+
+    // Role-based filtering for what requester roles to show
+    if (userRole === 'staff') {
+      // Staff should only see student leave requests
+      whereClause.requesterRole = 'student';
+    } else if (userRole === 'hod') {
+      // HOD should see both student and staff leave requests
+      whereClause.requesterRole = { [Op.in]: ['student', 'staff'] };
+    } else if (userRole === 'principal') {
+      // Principal should only see HOD leave requests
+      whereClause.requesterRole = 'hod';
+    }
 
     const leaves = await Leave.findAll({
       where: whereClause,

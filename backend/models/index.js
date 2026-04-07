@@ -18,10 +18,14 @@ const User = require('./User')(sequelize, Sequelize);
 const Leave = require('./Leave')(sequelize, Sequelize);
 const LeaveHistory = require('./LeaveHistory')(sequelize, Sequelize);
 const Notification = require('./Notification')(sequelize, Sequelize);
+const Notice = require('./Notice')(sequelize, Sequelize);
+const Reply = require('./Reply')(sequelize, Sequelize);
 
 // User Associations
 User.hasMany(Leave, { foreignKey: 'requesterId', as: 'leaves' });
 User.hasMany(Leave, { foreignKey: 'tempApproverId', as: 'tempApprovingFor' });
+User.hasMany(Notice, { foreignKey: 'senderId', as: 'sentNotices' });
+User.hasMany(Reply, { foreignKey: 'userId', as: 'replies' });
 
 // Leave Associations
 Leave.belongsTo(User, { foreignKey: 'requesterId', as: 'requester' });
@@ -42,10 +46,20 @@ User.hasMany(Notification, { foreignKey: 'userId', as: 'notifications' });
 Notification.belongsTo(User, { foreignKey: 'userId' });
 Notification.belongsTo(Leave, { foreignKey: 'leaveId', as: 'leave' });
 
+// Notice Associations
+Notice.belongsTo(User, { foreignKey: 'senderId', as: 'sender' });
+Notice.hasMany(Reply, { foreignKey: 'noticeId', as: 'replies' });
+
+// Reply Associations
+Reply.belongsTo(Notice, { foreignKey: 'noticeId' });
+Reply.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 module.exports = {
   sequelize,
   User,
   Leave,
   LeaveHistory,
   Notification,
+  Notice,
+  Reply,
 };

@@ -75,6 +75,22 @@ function App() {
             } 
           />
           <Route 
+            path="/staff/apply" 
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <StaffDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/staff/notices" 
+            element={
+              <ProtectedRoute allowedRoles={['staff']}>
+                <StaffDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/staff/temp-approver" 
             element={
               <ProtectedRoute allowedRoles={['staff']}>
@@ -117,6 +133,22 @@ function App() {
             } 
           />
           <Route 
+            path="/hod/apply" 
+            element={
+              <ProtectedRoute allowedRoles={['hod']}>
+                <HodDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/hod/notices" 
+            element={
+              <ProtectedRoute allowedRoles={['hod']}>
+                <HodDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/hod/temp-approver" 
             element={
               <ProtectedRoute allowedRoles={['hod']}>
@@ -144,6 +176,14 @@ function App() {
           />
           <Route 
             path="/principal/analytics" 
+            element={
+              <ProtectedRoute allowedRoles={['principal']}>
+                <PrincipalDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/principal/notices" 
             element={
               <ProtectedRoute allowedRoles={['principal']}>
                 <PrincipalDashboard />

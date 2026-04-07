@@ -1,172 +1,160 @@
 import React from 'react';
+import { motion } from 'framer-motion';
+import { User, Users, UserCog, Crown, CheckCircle2, XCircle, ArrowRight } from 'lucide-react';
 
-const Timeline = ({ status, history = [], requesterRole = 'student' }) => {
-  // Get approval steps based on requester role
-  const getSteps = () => {
+const Timeline = ({ status, history = [], requesterRole }) => {
+  // Define approval chain based on requester role
+  const getApprovalChain = () => {
     switch (requesterRole) {
       case 'student':
         return [
-          { key: 'applied', label: 'Applied', status: 'completed' },
-          { key: 'staff', label: 'Staff Review', status: getStepStatus('staff') },
-          { key: 'hod', label: 'HOD Review', status: getStepStatus('hod') },
-          { key: 'final', label: getFinalLabel(), status: getFinalStatus() },
+          { role: 'student', label: 'Applied', icon: User },
+          { role: 'staff', label: 'Staff Review', icon: Users },
+          { role: 'hod', label: 'HOD Approval', icon: UserCog },
         ];
       case 'staff':
         return [
-          { key: 'applied', label: 'Applied', status: 'completed' },
-          { key: 'hod', label: 'HOD Review', status: getStepStatus('hod') },
-          { key: 'final', label: getFinalLabel(), status: getFinalStatus() },
+          { role: 'staff', label: 'Applied', icon: User },
+          { role: 'hod', label: 'HOD Approval', icon: UserCog },
         ];
       case 'hod':
         return [
-          { key: 'applied', label: 'Applied', status: 'completed' },
-          { key: 'principal', label: 'Principal Review', status: getStepStatus('principal') },
-          { key: 'final', label: getFinalLabel(), status: getFinalStatus() },
+          { role: 'hod', label: 'Applied', icon: User },
+          { role: 'principal', label: 'Principal Approval', icon: Crown },
         ];
       case 'principal':
         return [
-          { key: 'applied', label: 'Applied', status: 'completed' },
-          { key: 'final', label: 'Auto-Approved', status: 'completed' },
+          { role: 'principal', label: 'Applied & Auto-Approved', icon: Crown },
         ];
       default:
         return [
-          { key: 'applied', label: 'Applied', status: 'completed' },
-          { key: 'staff', label: 'Staff Review', status: getStepStatus('staff') },
-          { key: 'hod', label: 'HOD Review', status: getStepStatus('hod') },
-          { key: 'final', label: getFinalLabel(), status: getFinalStatus() },
+          { role: 'student', label: 'Applied', icon: User },
+          { role: 'staff', label: 'Staff Review', icon: Users },
+          { role: 'hod', label: 'HOD Approval', icon: UserCog },
         ];
     }
   };
 
-  function getStepStatus(stepRole) {
-    // Find the history entry to determine if this step is completed
-    const roleApprovals = history.filter(h => 
-      h.action?.includes('approved') || h.action?.includes('forwarded')
-    );
-    
-    // Check if this step has been completed based on history
-    const stepCompleted = roleApprovals.some(h => 
-      h.role === stepRole || 
-      (stepRole === 'staff' && h.role === 'staff') ||
-      (stepRole === 'hod' && (h.role === 'hod' || h.action?.includes('hod'))) ||
-      (stepRole === 'principal' && (h.role === 'principal' || h.action?.includes('principal')))
-    );
-
-    // Check if currently at this step
-    const currentStepInHistory = history[history.length - 1];
-    const isCurrentStep = currentStepInHistory?.role === stepRole || 
-      (status === 'Pending' && stepRole === 'staff') ||
-      (status === 'In_Progress' && stepRole === getCurrentApproverFromHistory());
-
+  const chain = getApprovalChain();
+  
+  // Determine current stage based on status and history
+  const getCurrentStage = () => {
     if (status === 'Approved' || status === 'Auto_Approved') {
-      return 'completed';
+      return chain.length - 1;
     }
-    
     if (status === 'Rejected') {
-      const rejectedBy = history.find(h => h.action === 'rejected');
-      if (rejectedBy?.role === stepRole) return 'rejected';
-      if (stepCompleted) return 'completed';
-      return 'pending';
+      return -1;
     }
-
-    if (stepCompleted) return 'completed';
-    if (isCurrentStep) return 'in-progress';
-    return 'pending';
-  }
-
-  function getCurrentApproverFromHistory() {
-    const lastAction = history[history.length - 1];
-    if (!lastAction) return 'staff';
     
-    if (lastAction.action?.includes('staff')) return 'hod';
-    if (lastAction.action?.includes('hod')) return 'principal';
-    return 'staff';
-  }
-
-  function getFinalLabel() {
-    if (status === 'Approved' || status === 'Auto_Approved') return 'Approved';
-    if (status === 'Rejected') return 'Rejected';
-    return 'Decision';
-  }
-
-  function getFinalStatus() {
-    if (status === 'Approved' || status === 'Auto_Approved') return 'completed';
-    if (status === 'Rejected') return 'rejected';
-    return 'pending';
-  }
-
-  const steps = getSteps();
-
-  const getStepColor = (stepStatus) => {
-    switch (stepStatus) {
-      case 'completed':
-        return 'bg-green-500 border-green-500';
-      case 'in-progress':
-        return 'bg-yellow-500 border-yellow-500';
-      case 'rejected':
-        return 'bg-red-500 border-red-500';
-      default:
-        return 'bg-gray-300 border-gray-300';
+    if (history && history.length > 0) {
+      const lastAction = history[history.length - 1];
+      const stageIndex = chain.findIndex(s => s.role === lastAction.role);
+      if (stageIndex !== -1) {
+        return Math.min(stageIndex + 1, chain.length - 1);
+      }
     }
+    
+    return 0;
   };
 
-  const getStepTextColor = (stepStatus) => {
-    switch (stepStatus) {
-      case 'completed':
-        return 'text-green-600';
-      case 'in-progress':
-        return 'text-yellow-600';
-      case 'rejected':
-        return 'text-red-600';
-      default:
-        return 'text-gray-500';
-    }
-  };
+  const currentStage = getCurrentStage();
+  const isRejected = status === 'Rejected';
 
   return (
-    <div className="w-full">
-      <div className="flex items-center justify-between">
-        {steps.map((step, index) => (
-          <React.Fragment key={step.key}>
-            <div className="flex flex-col items-center">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium border-2 ${getStepColor(
-                  step.status
-                )}`}
-              >
-                {index + 1}
-              </div>
-              <span className={`mt-2 text-xs font-medium ${getStepTextColor(step.status)}`}>
-                {step.label}
-              </span>
-            </div>
-            {index < steps.length - 1 && (
-              <div
-                className={`flex-1 h-1 mx-2 ${
-                  step.status === 'completed' ? 'bg-green-500' : 'bg-gray-300'
-                }`}
-              />
-            )}
-          </React.Fragment>
-        ))}
-      </div>
+    <div className="bg-white rounded-xl p-6 border border-slate-100 shadow-sm">
+      <h4 className="font-semibold text-slate-800 mb-6 flex items-center gap-2">
+        <ArrowRight size={18} className="text-indigo-500" />
+        Approval Timeline
+      </h4>
       
-      {history.length > 0 && (
-        <div className="mt-4 space-y-2">
-          <h4 className="text-sm font-semibold text-gray-700">Approval History:</h4>
-          {history.map((item, index) => (
-            <div key={index} className="flex items-center gap-2 text-sm text-gray-600">
-              <span className="w-2 h-2 bg-primary-500 rounded-full"></span>
-              <span className="capitalize">{item.action?.replace(/_/g, ' ') || 'Action'}</span>
-              <span className="text-gray-400">by</span>
-              <span className="font-medium">{item.actionUser?.name || 'Unknown'}</span>
-              <span className="text-gray-400">({item.role})</span>
-              {item.comment && (
-                <span className="text-gray-400">- &quot;{item.comment}&quot;</span>
-              )}
-            </div>
-          ))}
+      <div className="relative">
+        {/* Progress Line */}
+        <div className="absolute top-6 left-0 right-0 h-1 bg-slate-200 rounded-full">
+          <motion.div 
+            className="h-full bg-gradient-to-r from-indigo-500 to-violet-500 rounded-full"
+            initial={{ width: 0 }}
+            animate={{ 
+              width: isRejected ? '0%' : `${((currentStage) / (chain.length - 1)) * 100}%` 
+            }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+          />
         </div>
+
+        {/* Stages */}
+        <div className="relative flex justify-between">
+          {chain.map((stage, index) => {
+            const Icon = stage.icon;
+            const isCompleted = index <= currentStage && !isRejected;
+            const isCurrent = index === currentStage && !isRejected;
+            const isPending = index > currentStage && !isRejected;
+
+            return (
+              <motion.div 
+                key={stage.role}
+                className="flex flex-col items-center"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <motion.div 
+                  className={`w-12 h-12 rounded-full flex items-center justify-center border-2 z-10 bg-white ${
+                    isCompleted 
+                      ? 'border-emerald-500 shadow-lg shadow-emerald-500/30' 
+                      : isRejected && index === 0
+                      ? 'border-rose-500 shadow-lg shadow-rose-500/30'
+                      : 'border-slate-300'
+                  }`}
+                  whileHover={{ scale: 1.1 }}
+                  animate={isCurrent ? { scale: [1, 1.1, 1] } : {}}
+                  transition={{ duration: 0.5, repeat: isCurrent ? Infinity : 0, repeatDelay: 1 }}
+                >
+                  {isCompleted ? (
+                    <CheckCircle2 size={20} className="text-emerald-500" />
+                  ) : isRejected && index === 0 ? (
+                    <XCircle size={20} className="text-rose-500" />
+                  ) : (
+                    <Icon size={20} className={isPending ? 'text-slate-400' : 'text-indigo-500'} />
+                  )}
+                </motion.div>
+                
+                <div className="mt-3 text-center">
+                  <p className={`text-sm font-semibold ${
+                    isCompleted ? 'text-emerald-600' : 
+                    isRejected ? 'text-rose-600' : 
+                    isCurrent ? 'text-indigo-600' : 'text-slate-500'
+                  }`}>
+                    {stage.label}
+                  </p>
+                  {isCurrent && !isRejected && (
+                    <motion.span 
+                      className="text-xs text-indigo-500 font-medium"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.5 }}
+                    >
+                      Current
+                    </motion.span>
+                  )}
+                  {isRejected && index === 0 && (
+                    <span className="text-xs text-rose-500 font-medium">Rejected</span>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+
+      {isRejected && (
+        <motion.div 
+          className="mt-4 p-4 bg-rose-50 border border-rose-200 rounded-lg"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          <p className="text-rose-700 font-medium text-sm">
+            This leave request has been rejected
+          </p>
+        </motion.div>
       )}
     </div>
   );

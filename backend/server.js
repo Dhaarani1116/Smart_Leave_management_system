@@ -8,6 +8,7 @@ dotenv.config();
 const authRoutes = require('./routes/auth');
 const leaveRoutes = require('./routes/leaves');
 const notificationRoutes = require('./routes/notifications');
+const noticeRoutes = require('./routes/notices');
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.get('/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/notices', noticeRoutes);
 
 // 404 handler
 app.use((req, res) => {

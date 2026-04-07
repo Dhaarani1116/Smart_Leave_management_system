@@ -10,7 +10,9 @@ import {
   AlertTriangle,
   Users,
   Bell,
-  UserCheck
+  UserCheck,
+  Megaphone,
+  Plus
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -27,23 +29,28 @@ const Sidebar = () => {
       case 'staff':
         return [
           { path: '/staff', icon: LayoutDashboard, label: 'Dashboard' },
+          { path: '/staff/apply', icon: Plus, label: 'Apply Leave' },
           { path: '/staff/requests', icon: FileText, label: 'Leave Requests' },
           { path: '/staff/analytics', icon: BarChart3, label: 'Analytics' },
+          { path: '/staff/notices', icon: Megaphone, label: 'Notice Board' },
           { path: '/staff/conflicts', icon: AlertTriangle, label: 'Conflicts' },
           { path: '/staff/temp-approver', icon: UserCheck, label: 'Temp Approver' },
         ];
       case 'hod':
         return [
           { path: '/hod', icon: LayoutDashboard, label: 'Dashboard' },
+          { path: '/hod/apply', icon: Plus, label: 'Apply Leave' },
           { path: '/hod/requests', icon: FileText, label: 'Department Requests' },
           { path: '/hod/analytics', icon: BarChart3, label: 'Analytics' },
+          { path: '/hod/notices', icon: Megaphone, label: 'Notice Board' },
           { path: '/hod/conflicts', icon: AlertTriangle, label: 'Conflicts' },
         ];
       case 'principal':
         return [
           { path: '/principal', icon: LayoutDashboard, label: 'Dashboard' },
-          { path: '/principal/requests', icon: FileText, label: 'All Requests' },
+          { path: '/principal/requests', icon: FileText, label: 'HOD Requests' },
           { path: '/principal/analytics', icon: BarChart3, label: 'Analytics' },
+          { path: '/principal/notices', icon: Megaphone, label: 'Notice Board' },
           { path: '/principal/reports', icon: Users, label: 'Reports' },
         ];
       default:

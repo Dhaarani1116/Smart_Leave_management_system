@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Calendar, History, AlertTriangle, CheckCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Plus, Calendar, History, AlertTriangle, CheckCircle, 
+  Clock, XCircle, FileText, ChevronRight 
+} from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import Timeline from '../components/Timeline';
+import StatCard from '../components/StatCard';
+import EmptyState from '../components/EmptyState';
 import { leaveAPI } from '../services/api';
 
 const StudentDashboard = () => {
@@ -81,8 +87,8 @@ const StudentDashboard = () => {
 
   const getLeaveStats = () => {
     const total = leaves.length;
-    const approved = leaves.filter(l => l.status === 'Approved').length;
-    const pending = leaves.filter(l => l.status.includes('Pending')).length;
+    const approved = leaves.filter(l => l.status === 'Approved' || l.status === 'Auto_Approved').length;
+    const pending = leaves.filter(l => l.status === 'Pending' || l.status === 'In_Progress').length;
     const rejected = leaves.filter(l => l.status === 'Rejected').length;
     return { total, approved, pending, rejected };
   };
@@ -96,7 +102,7 @@ const StudentDashboard = () => {
     }
     const recentLeaves = leaves.filter(l => {
       const days = (new Date() - new Date(l.fromDate)) / (1000 * 60 * 60 * 24);
-      return days < 30 && l.status === 'Approved';
+      return days < 30 && (l.status === 'Approved' || l.status === 'Auto_Approved');
     });
     if (recentLeaves.length > 3) {
       alerts.push({ type: 'info', message: 'High leave frequency this month - consider attendance impact' });
@@ -107,107 +113,144 @@ const StudentDashboard = () => {
   const alerts = getSmartAlerts();
 
   const renderDashboard = () => (
-    <div className="space-y-6">
+    <motion.div 
+      className="space-y-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
       {alerts.length > 0 && (
         <div className="space-y-2">
           {alerts.map((alert, index) => (
-            <div key={index} className={`p-4 rounded-lg flex items-center gap-3 ${
-              alert.type === 'warning' ? 'bg-yellow-50 border border-yellow-200' : 'bg-blue-50 border border-blue-200'
-            }`}>
-              <AlertTriangle className={alert.type === 'warning' ? 'text-yellow-600' : 'text-blue-600'} size={20} />
-              <p className={`text-sm ${alert.type === 'warning' ? 'text-yellow-800' : 'text-blue-800'}`}>
+            <motion.div 
+              key={index} 
+              className={`p-4 rounded-lg flex items-center gap-3 ${
+                alert.type === 'warning' ? 'bg-amber-50 border border-amber-200' : 'bg-blue-50 border border-blue-200'
+              }`}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1 }}
+            >
+              <AlertTriangle 
+                className={alert.type === 'warning' ? 'text-amber-600' : 'text-blue-600'} 
+                size={20} 
+              />
+              <p className={`text-sm font-medium ${
+                alert.type === 'warning' ? 'text-amber-800' : 'text-blue-800'
+              }`}>
                 {alert.message}
               </p>
-            </div>
+            </motion.div>
           ))}
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Leaves</p>
-              <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
-            </div>
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <Calendar className="text-blue-600" size={20} />
-            </div>
-          </div>
-        </div>
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Approved</p>
-              <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
-            </div>
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <CheckCircle className="text-green-600" size={20} />
-            </div>
-          </div>
-        </div>
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Pending</p>
-              <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
-            </div>
-            <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <History className="text-yellow-600" size={20} />
-            </div>
-          </div>
-        </div>
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Rejected</p>
-              <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
-            </div>
-            <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-              <AlertTriangle className="text-red-600" size={20} />
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard
+          title="Total Leaves"
+          value={stats.total}
+          icon={Calendar}
+          color="indigo"
+          delay={0}
+        />
+        <StatCard
+          title="Approved"
+          value={stats.approved}
+          icon={CheckCircle}
+          color="emerald"
+          delay={0.1}
+        />
+        <StatCard
+          title="Pending"
+          value={stats.pending}
+          icon={Clock}
+          color="amber"
+          delay={0.2}
+        />
+        <StatCard
+          title="Rejected"
+          value={stats.rejected}
+          icon={XCircle}
+          color="rose"
+          delay={0.3}
+        />
       </div>
 
-      <div className="card">
+      <motion.div className="card"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4 }}
+      >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-800">Recent Leave Requests</h2>
-          <button
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+              <FileText className="text-indigo-600" size={20} />
+            </div>
+            <h2 className="text-lg font-bold text-slate-800">Recent Leave Requests</h2>
+          </div>
+          <motion.button
             onClick={() => setShowForm(true)}
             className="btn-primary flex items-center gap-2"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
             <Plus size={18} />
             Apply Leave
-          </button>
+          </motion.button>
         </div>
 
-        {leaves.slice(0, 5).map((leave) => (
-          <div key={leave.id} className="border-b border-gray-100 last:border-0 py-4">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <p className="font-medium text-gray-800">
-                  {new Date(leave.fromDate).toLocaleDateString()} - {new Date(leave.toDate).toLocaleDateString()}
-                </p>
-                <p className="text-sm text-gray-500 capitalize">{leave.leaveType} Leave</p>
-              </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                leave.status === 'Approved' ? 'bg-green-100 text-green-800' :
-                leave.status === 'Rejected' ? 'bg-red-100 text-red-800' :
-                'bg-yellow-100 text-yellow-800'
-              }`}>
-                {leave.status.replace(/_/g, ' ')}
-              </span>
-            </div>
-            <Timeline status={leave.status} history={leave.history} requesterRole="student" />
-          </div>
-        ))}
+        {leaves.length === 0 ? (
+          <EmptyState
+            title="No leave requests yet"
+            message="You haven't applied for any leaves. Click the button above to apply."
+            icon="calendar"
+            action={() => setShowForm(true)}
+            actionLabel="Apply Now"
+          />
+        ) : (
+          <div className="space-y-4">
+            {leaves.slice(0, 5).map((leave, index) => (
+              <motion.div 
+                key={leave.id} 
+                className="bg-slate-50 rounded-xl p-5 border border-slate-100"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * index }}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div>
+                    <p className="font-semibold text-slate-800">
+                      {new Date(leave.fromDate).toLocaleDateString()} - {new Date(leave.toDate).toLocaleDateString()}
+                    </p>
+                    <p className="text-sm text-slate-500 capitalize">{leave.leaveType} Leave</p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    leave.status === 'Approved' || leave.status === 'Auto_Approved' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                    leave.status === 'Rejected' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                    leave.status === 'In_Progress' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                    'bg-amber-100 text-amber-700 border border-amber-200'
+                  }`}>
+                    {leave.status.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <Timeline status={leave.status} history={leave.history} requesterRole="student" />
+              </motion.div>
+            ))}
 
-        {leaves.length === 0 && (
-          <p className="text-center text-gray-500 py-8">No leave requests yet</p>
+            {leaves.length > 5 && (
+              <motion.button
+                className="w-full py-3 text-indigo-600 font-medium hover:bg-indigo-50 rounded-xl transition-colors flex items-center justify-center gap-2"
+                whileHover={{ scale: 1.02 }}
+                onClick={() => setActiveTab('history')}
+              >
+                View All History
+                <ChevronRight size={18} />
+              </motion.button>
+            )}
+          </div>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 
   const renderApplyForm = () => (
@@ -347,52 +390,131 @@ const StudentDashboard = () => {
   );
 
   const renderHistory = () => (
-    <div className="card">
-      <h2 className="text-lg font-semibold text-gray-800 mb-6">Leave History</h2>
-      
-      {leaves.map((leave) => (
-        <div key={leave.id} className="border-b border-gray-100 last:border-0 py-6">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <p className="font-medium text-lg text-gray-800">
-                {new Date(leave.fromDate).toLocaleDateString()} - {new Date(leave.toDate).toLocaleDateString()}
-              </p>
-              <p className="text-gray-500">{leave.leaveType.charAt(0).toUpperCase() + leave.leaveType.slice(1)} Leave</p>
-            </div>
-            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-              leave.status === 'Approved' ? 'bg-green-100 text-green-800' :
-              leave.status === 'Rejected' ? 'bg-red-100 text-red-800' :
-              'bg-yellow-100 text-yellow-800'
-            }`}>
-              {leave.status.replace(/_/g, ' ')}
-            </span>
+    <motion.div 
+      className="space-y-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      <div className="card">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+            <History className="text-indigo-600" size={20} />
           </div>
-          
-          <div className="mb-4">
-            <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
-              <span className="font-medium">Reason:</span> {leave.reason}
-            </p>
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">Leave History</h2>
+            <p className="text-sm text-slate-500">All your leave applications</p>
           </div>
-
-          <Timeline status={leave.status} history={leave.history} />
         </div>
-      ))}
+        
+        {leaves.length === 0 ? (
+          <EmptyState
+            title="No leave history"
+            message="You haven't applied for any leaves yet."
+            icon="history"
+          />
+        ) : (
+          <div className="space-y-6">
+            {leaves.map((leave, index) => (
+              <motion.div 
+                key={leave.id} 
+                className="bg-slate-50 rounded-xl p-6 border border-slate-100"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.05 * index }}
+              >
+                <div className="flex items-start justify-between mb-4">
+                  <div>
+                    <p className="font-bold text-lg text-slate-800">
+                      {new Date(leave.fromDate).toLocaleDateString()} - {new Date(leave.toDate).toLocaleDateString()}
+                    </p>
+                    <p className="text-slate-500">{leave.leaveType.charAt(0).toUpperCase() + leave.leaveType.slice(1)} Leave</p>
+                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    leave.status === 'Approved' || leave.status === 'Auto_Approved' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                    leave.status === 'Rejected' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                    leave.status === 'In_Progress' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                    'bg-amber-100 text-amber-700 border border-amber-200'
+                  }`}>
+                    {leave.status.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                
+                <div className="mb-4">
+                  <p className="text-sm font-medium text-slate-600 mb-2">Reason:</p>
+                  <p className="text-sm text-slate-700 bg-white p-4 rounded-xl border border-slate-200">
+                    {leave.reason}
+                  </p>
+                </div>
 
-      {leaves.length === 0 && (
-        <p className="text-center text-gray-500 py-8">No leave history available</p>
-      )}
-    </div>
+                <Timeline status={leave.status} history={leave.history} requesterRole="student" />
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
+    </motion.div>
   );
 
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-slate-50">
+        <Sidebar />
+        <div className="flex-1">
+          <Navbar />
+          <main className="p-6">
+            <div className="flex items-center justify-center h-64">
+              <motion.div
+                className="w-12 h-12 border-4 border-indigo-500 border-t-transparent rounded-full"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              />
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
       <div className="flex-1">
         <Navbar />
         <main className="p-6">
-          {activeTab === 'apply' ? renderApplyForm() : 
-           activeTab === 'history' ? renderHistory() : 
-           renderDashboard()}
+          <AnimatePresence mode="wait">
+            {activeTab === 'apply' ? (
+              <motion.div
+                key="apply"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {renderApplyForm()}
+              </motion.div>
+            ) : activeTab === 'history' ? (
+              <motion.div
+                key="history"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {renderHistory()}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="dashboard"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {renderDashboard()}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </main>
       </div>
     </div>

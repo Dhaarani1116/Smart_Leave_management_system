@@ -1,10 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, CheckCircle, Clock, BarChart3, Users, AlertTriangle, TrendingUp, Plus } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  FileText, CheckCircle, Clock, BarChart3, Users, AlertTriangle, 
+  TrendingUp, Plus, XCircle, ChevronRight, GraduationCap, UserCheck, User,
+  Calendar
+} from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import LeaveTable from '../components/LeaveTable';
 import AnalyticsDashboard from '../components/AnalyticsDashboard';
+import NoticeBoard from '../components/NoticeBoard';
+import StatCard from '../components/StatCard';
+import EmptyState from '../components/EmptyState';
+import ConfirmationDialog from '../components/ConfirmationDialog';
+import Timeline from '../components/Timeline';
 import { leaveAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -16,14 +26,18 @@ const HodDashboard = () => {
     if (path.includes('/apply')) return 'apply';
     if (path.includes('/analytics')) return 'analytics';
     if (path.includes('/conflicts')) return 'conflicts';
-    return 'requests';
+    if (path.includes('/notices')) return 'notices';
+    if (path.includes('/history')) return 'history';
+    return 'dashboard';
   };
   
   const [leaves, setLeaves] = useState([]);
+  const [myLeaves, setMyLeaves] = useState([]);
   const [stats, setStats] = useState(null);
   const [conflicts, setConflicts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(getInitialTab());
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, leaveId: null, type: null });
 
   // Leave application form state
   const [showApplyForm, setShowApplyForm] = useState(false);
@@ -47,17 +61,22 @@ const HodDashboard = () => {
     if (path.includes('/apply')) setActiveTab('apply');
     else if (path.includes('/analytics')) setActiveTab('analytics');
     else if (path.includes('/conflicts')) setActiveTab('conflicts');
-    else setActiveTab('requests');
+    else if (path.includes('/notices')) setActiveTab('notices');
+    else if (path.includes('/history')) setActiveTab('history');
+    else if (path.includes('/requests')) setActiveTab('requests');
+    else setActiveTab('dashboard');
   }, [location]);
 
   const fetchData = async () => {
     try {
-      const [leavesRes, statsRes, conflictsRes] = await Promise.all([
+      const [leavesRes, myLeavesRes, statsRes, conflictsRes] = await Promise.all([
         leaveAPI.getAllLeaves(),
+        leaveAPI.getMyLeaves(),
         leaveAPI.getLeaveStats(),
         leaveAPI.getConflicts()
       ]);
       setLeaves(leavesRes.data);
+      setMyLeaves(myLeavesRes.data);
       setStats(statsRes.data);
       setConflicts(conflictsRes.data);
     } catch (error) {
@@ -77,8 +96,13 @@ const HodDashboard = () => {
   };
 
   const handleReject = async (id, comment) => {
+    setConfirmDialog({ isOpen: true, leaveId: id, type: 'reject', comment });
+  };
+
+  const confirmReject = async () => {
     try {
-      await leaveAPI.rejectLeave(id, comment);
+      await leaveAPI.rejectLeave(confirmDialog.leaveId, confirmDialog.comment);
+      setConfirmDialog({ isOpen: false, leaveId: null, type: null, comment: '' });
       fetchData();
     } catch (error) {
       console.error('Error rejecting leave:', error);
@@ -111,184 +135,250 @@ const HodDashboard = () => {
     }
   };
 
-  // Get pending leaves for HOD (status is 'Pending' or 'In_Progress' where currentApproverRole is 'hod')
-  const getPendingForHOD = () => {
-    return leaves.filter(l =>
-      (l.status === 'Pending' || l.status === 'In_Progress') &&
-      l.currentApproverRole === 'hod'
-    );
+  const getMyLeaveStats = () => {
+    const total = myLeaves.length;
+    const approved = myLeaves.filter(l => l.status === 'Approved' || l.status === 'Auto_Approved').length;
+    const pending = myLeaves.filter(l => l.status === 'Pending' || l.status === 'In_Progress').length;
+    const rejected = myLeaves.filter(l => l.status === 'Rejected').length;
+    return { total, approved, pending, rejected };
   };
 
-  // Get forwarded to principal
-  const getForwardedToPrincipal = () => {
-    return leaves.filter(l =>
-      l.status === 'In_Progress' && l.currentApproverRole === 'principal'
-    );
-  };
-
-  const hodStats = {
-    pendingHOD: getPendingForHOD().length,
-    forwarded: getForwardedToPrincipal().length,
-    totalDept: leaves.length,
-    approved: leaves.filter(l => l.status === 'Approved' || l.status === 'Auto_Approved').length,
-  };
+  const myStats = getMyLeaveStats();
 
   const renderDashboard = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="card">
+    <motion.div 
+      className="space-y-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      {/* HOD's Own Leave Summary - Like Student Dashboard */}
+      <motion.div 
+        className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+      >
+        <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-purple-50 to-pink-50">
           <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Pending HOD Review</p>
-              <p className="text-2xl font-bold text-yellow-600">{hodStats.pendingHOD}</p>
-            </div>
-            <div className="w-10 h-10 bg-yellow-100 rounded-lg flex items-center justify-center">
-              <Clock className="text-yellow-600" size={20} />
-            </div>
-          </div>
-        </div>
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Forwarded to Principal</p>
-              <p className="text-2xl font-bold text-blue-600">{hodStats.forwarded}</p>
-            </div>
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <FileText className="text-blue-600" size={20} />
-            </div>
-          </div>
-        </div>
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Department Leaves</p>
-              <p className="text-2xl font-bold text-primary-600">{hodStats.totalDept}</p>
-            </div>
-            <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
-              <Users className="text-primary-600" size={20} />
-            </div>
-          </div>
-        </div>
-        <div className="card">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-500">Total Approved</p>
-              <p className="text-2xl font-bold text-green-600">
-                {leaves.filter(l => l.status === 'Approved').length}
-              </p>
-            </div>
-            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <CheckCircle className="text-green-600" size={20} />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {conflicts.length > 0 && (
-        <div className="card border-orange-200 bg-orange-50">
-          <div className="flex items-center gap-3 mb-4">
-            <AlertTriangle className="text-orange-600" size={24} />
-            <h2 className="text-lg font-semibold text-orange-800">Department Leave Conflicts</h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {conflicts.slice(0, 3).map((conflict, index) => (
-              <div key={index} className="bg-white p-4 rounded-lg border border-orange-200">
-                <p className="font-medium text-gray-800">{new Date(conflict.date).toLocaleDateString()}</p>
-                <p className="text-orange-600">{conflict.count} students on leave</p>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center">
+                <User className="text-purple-600" size={20} />
               </div>
-            ))}
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">My Leave Summary</h2>
+                <p className="text-sm text-slate-500">Your personal leave statistics</p>
+              </div>
+            </div>
+            <motion.button
+              onClick={() => setActiveTab('apply')}
+              className="px-4 py-2 bg-purple-600 text-white rounded-xl text-sm font-medium flex items-center gap-2 hover:bg-purple-700 transition-colors"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Plus size={16} />
+              Apply Leave
+            </motion.button>
           </div>
         </div>
-      )}
+        
+        <div className="p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <StatCard
+              title="Total Leaves"
+              value={myStats.total}
+              icon={Calendar}
+              color="purple"
+              delay={0}
+            />
+            <StatCard
+              title="Approved"
+              value={myStats.approved}
+              icon={CheckCircle}
+              color="emerald"
+              delay={0.1}
+            />
+            <StatCard
+              title="Pending"
+              value={myStats.pending}
+              icon={Clock}
+              color="amber"
+              delay={0.2}
+            />
+            <StatCard
+              title="Rejected"
+              value={myStats.rejected}
+              icon={XCircle}
+              color="rose"
+              delay={0.3}
+            />
+          </div>
 
-      <div className="card">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-800">Pending HOD Review</h2>
-          <button
-            onClick={() => setShowApplyForm(true)}
-            className="btn-primary flex items-center gap-2"
-          >
-            <Plus size={18} />
-            Apply Leave
-          </button>
-        </div>
-        <LeaveTable
-          leaves={getPendingForHOD().slice(0, 5)}
-          onApprove={handleApprove}
-          onReject={handleReject}
-          showActions={true}
-          showStudent={true}
-        />
-      </div>
-    </div>
-  );
+          {/* Recent Own Leaves with Timeline */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-slate-700">My Recent Leave Requests</h3>
+              {myLeaves.length > 3 && (
+                <motion.button
+                  onClick={() => setActiveTab('history')}
+                  className="text-sm text-purple-600 font-medium hover:text-purple-700 flex items-center gap-1"
+                  whileHover={{ x: 2 }}
+                >
+                  View All History
+                  <ChevronRight size={16} />
+                </motion.button>
+              )}
+            </div>
 
-  const renderRequests = () => (
-    <div className="space-y-6">
-      <div className="card">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-lg font-semibold text-gray-800">Department Leave Requests</h2>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setActiveTab('all')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeTab === 'all' ? 'bg-primary-100 text-primary-700' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setActiveTab('pending')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeTab === 'pending' ? 'bg-yellow-100 text-yellow-700' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Pending
-            </button>
-            <button
-              onClick={() => setActiveTab('in_progress')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeTab === 'in_progress' ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              In Progress
-            </button>
-            <button
-              onClick={() => setActiveTab('approved')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeTab === 'approved' ? 'bg-green-100 text-green-700' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Approved
-            </button>
-            <button
-              onClick={() => setActiveTab('rejected')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium ${
-                activeTab === 'rejected' ? 'bg-red-100 text-red-700' : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              Rejected
-            </button>
+            {myLeaves.length === 0 ? (
+              <EmptyState
+                title="No leave applications"
+                message="You haven't applied for any leaves yet. Start by applying for leave."
+                icon="calendar"
+                action={() => setActiveTab('apply')}
+                actionLabel="Apply Now"
+              />
+            ) : (
+              <div className="space-y-4">
+                {myLeaves.slice(0, 3).map((leave, index) => (
+                  <motion.div 
+                    key={leave.id} 
+                    className="bg-slate-50 rounded-xl p-4 border border-slate-100"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.1 * index }}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-white shadow-sm flex items-center justify-center">
+                          <Calendar className="text-purple-500" size={18} />
+                        </div>
+                        <div>
+                          <p className="font-medium text-slate-800 text-sm">
+                            {new Date(leave.fromDate).toLocaleDateString()} - {new Date(leave.toDate).toLocaleDateString()}
+                          </p>
+                          <p className="text-xs text-slate-500 capitalize">{leave.leaveType} Leave</p>
+                        </div>
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        leave.status === 'Approved' || leave.status === 'Auto_Approved' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                        leave.status === 'Rejected' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                        leave.status === 'In_Progress' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                        'bg-amber-100 text-amber-700 border border-amber-200'
+                      }`}>
+                        {leave.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <Timeline status={leave.status} history={leave.history} requesterRole="hod" />
+                  </motion.div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-
-        <LeaveTable
-          leaves={leaves.filter(l => {
-            if (activeTab === 'all') return true;
-            if (activeTab === 'pending') return l.status === 'Pending';
-            if (activeTab === 'in_progress') return l.status === 'In_Progress';
-            if (activeTab === 'approved') return l.status === 'Approved' || l.status === 'Auto_Approved';
-            if (activeTab === 'rejected') return l.status === 'Rejected';
-            return true;
-          })}
-          onApprove={handleApprove}
-          onReject={handleReject}
-          showActions={true}
-          showStudent={true}
-        />
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
+
+  const renderRequests = () => {
+    const studentRequests = leaves.filter(l => l.requester?.role === 'student');
+    const staffRequests = leaves.filter(l => l.requester?.role === 'staff');
+    
+    return (
+      <motion.div 
+        className="space-y-8"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        {/* SECTION 1: STUDENT REQUESTS */}
+        <motion.div 
+          className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-amber-50 to-orange-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center">
+                  <GraduationCap className="text-amber-600" size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800">Student Leave Requests</h2>
+                  <p className="text-sm text-slate-500">Review and manage student leave applications</p>
+                </div>
+              </div>
+              <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
+                {studentRequests.length} requests
+              </span>
+            </div>
+          </div>
+
+          <div className="p-6">
+            {studentRequests.length === 0 ? (
+              <EmptyState
+                title="No student requests"
+                message="There are no student leave requests to review at the moment."
+                icon="inbox"
+              />
+            ) : (
+              <LeaveTable
+                leaves={studentRequests}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                showActions={true}
+                showStudent={true}
+              />
+            )}
+          </div>
+        </motion.div>
+
+        {/* SECTION 2: STAFF REQUESTS */}
+        <motion.div 
+          className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center">
+                  <UserCheck className="text-blue-600" size={20} />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-800">Staff Leave Requests</h2>
+                  <p className="text-sm text-slate-500">Review and manage staff leave applications</p>
+                </div>
+              </div>
+              <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                {staffRequests.length} requests
+              </span>
+            </div>
+          </div>
+
+          <div className="p-6">
+            {staffRequests.length === 0 ? (
+              <EmptyState
+                title="No staff requests"
+                message="There are no staff leave requests to review at the moment."
+                icon="inbox"
+              />
+            ) : (
+              <LeaveTable
+                leaves={staffRequests}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                showActions={true}
+                showStudent={true}
+              />
+            )}
+          </div>
+        </motion.div>
+      </motion.div>
+    );
+  };
 
   const renderAnalytics = () => (
     <div className="space-y-6">
@@ -467,15 +557,98 @@ const HodDashboard = () => {
     </div>
   );
 
+  const renderNotices = () => (
+    <div className="space-y-6">
+      <NoticeBoard />
+    </div>
+  );
+
+  const renderHistory = () => (
+    <motion.div 
+      className="space-y-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      <div className="bg-white rounded-2xl shadow-lg border border-slate-100 overflow-hidden">
+        <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-purple-50 to-pink-50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white shadow-sm flex items-center justify-center">
+              <Clock className="text-purple-600" size={20} />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-slate-800">My Leave History</h2>
+              <p className="text-sm text-slate-500">All your leave applications and their status</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="p-6">
+          {myLeaves.length === 0 ? (
+            <EmptyState
+              title="No leave history"
+              message="You haven't applied for any leaves yet."
+              icon="history"
+              action={() => setActiveTab('apply')}
+              actionLabel="Apply Now"
+            />
+          ) : (
+            <div className="space-y-4">
+              {myLeaves.map((leave, index) => (
+                <motion.div 
+                  key={leave.id} 
+                  className="bg-slate-50 rounded-xl p-6 border border-slate-100"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.05 * index }}
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div>
+                      <p className="font-bold text-lg text-slate-800">
+                        {new Date(leave.fromDate).toLocaleDateString()} - {new Date(leave.toDate).toLocaleDateString()}
+                      </p>
+                      <p className="text-slate-500 capitalize">{leave.leaveType} Leave</p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      leave.status === 'Approved' || leave.status === 'Auto_Approved' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+                      leave.status === 'Rejected' ? 'bg-rose-100 text-rose-700 border border-rose-200' :
+                      leave.status === 'In_Progress' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                      'bg-amber-100 text-amber-700 border border-amber-200'
+                    }`}>
+                      {leave.status.replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <p className="text-sm font-medium text-slate-600 mb-2">Reason:</p>
+                    <p className="text-sm text-slate-700 bg-white p-4 rounded-xl border border-slate-200">
+                      {leave.reason}
+                    </p>
+                  </div>
+
+                  <Timeline status={leave.status} history={leave.history} requesterRole="hod" />
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
+      <div className="flex min-h-screen bg-slate-50">
         <Sidebar />
         <div className="flex-1">
           <Navbar />
           <main className="p-6">
             <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+              <motion.div
+                className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              />
             </div>
           </main>
         </div>
@@ -484,20 +657,92 @@ const HodDashboard = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
       <div className="flex-1">
         <Navbar />
         <main className="p-6">
-          {activeTab === 'requests' || ['all', 'pending', 'in_progress', 'approved', 'rejected'].includes(activeTab)
-            ? renderRequests()
-            : activeTab === 'apply'
-            ? renderApplyForm()
-            : activeTab === 'analytics'
-            ? renderAnalytics()
-            : activeTab === 'conflicts'
-            ? renderConflicts()
-            : renderDashboard()}
+          <ConfirmationDialog
+            isOpen={confirmDialog.isOpen}
+            onClose={() => setConfirmDialog({ isOpen: false, leaveId: null, type: null })}
+            onConfirm={confirmReject}
+            title="Confirm Rejection"
+            message="Are you sure you want to reject this leave request? This action cannot be undone."
+            type="danger"
+          />
+          <AnimatePresence mode="wait">
+            {activeTab === 'requests' ? (
+              <motion.div
+                key="requests"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {renderRequests()}
+              </motion.div>
+            ) : activeTab === 'apply' ? (
+              <motion.div
+                key="apply"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {renderApplyForm()}
+              </motion.div>
+            ) : activeTab === 'history' ? (
+              <motion.div
+                key="history"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {renderHistory()}
+              </motion.div>
+            ) : activeTab === 'analytics' ? (
+              <motion.div
+                key="analytics"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {renderAnalytics()}
+              </motion.div>
+            ) : activeTab === 'conflicts' ? (
+              <motion.div
+                key="conflicts"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {renderConflicts()}
+              </motion.div>
+            ) : activeTab === 'notices' ? (
+              <motion.div
+                key="notices"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {renderNotices()}
+              </motion.div>
+            ) : (
+              <motion.div
+                key="dashboard"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                {renderDashboard()}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </main>
       </div>
     </div>
