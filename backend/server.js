@@ -12,11 +12,11 @@ const noticeRoutes = require('./routes/notices');
 
 const app = express();
 
-// CORS configuration - Update YOUR_VERCEL_URL after deploying frontend
+// CORS configuration - Allow Vercel frontend domains
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
     ? [
-        'https://leave-management-system.vercel.app',  // Replace with your Vercel URL
+        /^https:\/\/.*\.vercel\.app$/,  // Allow all Vercel subdomains
         'https://*.vercel.app',
         'http://localhost:5173'
       ]
