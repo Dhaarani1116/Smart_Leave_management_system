@@ -1,7 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
-const { sequelize } = require('./models');
+const bcrypt = require('bcryptjs');
+const { sequelize, User } = require('./models');
 
 dotenv.config();
 
@@ -62,9 +63,70 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
+const seedDatabase = async () => {
+  try {
+    const userCount = await User.count();
+    
+    if (userCount === 0) {
+      console.log('🌱 Database empty, seeding with demo data...');
+      
+      const hashedPassword = await bcrypt.hash('password123', 10);
+
+      // Create Principal
+      await User.create({
+        name: 'Dr. James Anderson',
+        email: 'principal@college.edu',
+        password: hashedPassword,
+        role: 'principal'
+      });
+
+      // Create HOD
+      await User.create({
+        name: 'Dr. Sarah Wilson',
+        email: 'hod.cse@college.edu',
+        password: hashedPassword,
+        role: 'hod',
+        department: 'CSE'
+      });
+
+      // Create Staff
+      await User.create({
+        name: 'Prof. John Smith',
+        email: 'staff.cse1@college.edu',
+        password: hashedPassword,
+        role: 'staff',
+        department: 'CSE'
+      });
+
+      // Create Students
+      await User.create({
+        name: 'Student CSE 1',
+        email: 'student.cse1@college.edu',
+        password: hashedPassword,
+        role: 'student',
+        department: 'CSE',
+        class: '2nd Year'
+      });
+
+      console.log('✅ Demo users created:');
+      console.log('   Principal: principal@college.edu');
+      console.log('   HOD: hod.cse@college.edu');
+      console.log('   Staff: staff.cse1@college.edu');
+      console.log('   Student: student.cse1@college.edu');
+      console.log('   (All use password: password123)');
+    } else {
+      console.log(`✅ Database already has ${userCount} users`);
+    }
+  } catch (error) {
+    console.error('❌ Seeding error:', error.message);
+  }
+};
+
 sequelize.sync({ force: false }).then(() => {
   console.log('Database synced');
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  seedDatabase().then(() => {
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
   });
 });
