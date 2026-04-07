@@ -12,10 +12,14 @@ const noticeRoutes = require('./routes/notices');
 
 const app = express();
 
-// CORS configuration - Allow all origins in development, specific in production
+// CORS configuration - Update YOUR_VERCEL_URL after deploying frontend
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://leave-management-system.vercel.app', 'https://*.vercel.app', 'http://localhost:5173']
+    ? [
+        'https://leave-management-system.vercel.app',  // Replace with your Vercel URL
+        'https://*.vercel.app',
+        'http://localhost:5173'
+      ]
     : true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
