@@ -1,18 +1,37 @@
 const { Sequelize } = require('sequelize');
 const dotenv = require('dotenv');
+const path = require('path');
 
 dotenv.config();
 
-const sequelize = new Sequelize(
-  process.env.DB_NAME,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
-  {
-    host: process.env.DB_HOST,
-    dialect: 'mysql',
+// Use SQLite for production (Render) if no MySQL credentials provided
+// Use MySQL for local development if credentials exist
+const useSQLite = !process.env.DB_HOST || process.env.NODE_ENV === 'production';
+
+let sequelize;
+
+if (useSQLite) {
+  // SQLite configuration - file based, no server needed
+  sequelize = new Sequelize({
+    dialect: 'sqlite',
+    storage: path.join(__dirname, '..', 'database.sqlite'),
     logging: false,
-  }
-);
+  });
+  console.log('Using SQLite database');
+} else {
+  // MySQL configuration for local development
+  sequelize = new Sequelize(
+    process.env.DB_NAME,
+    process.env.DB_USER,
+    process.env.DB_PASSWORD,
+    {
+      host: process.env.DB_HOST,
+      dialect: 'mysql',
+      logging: false,
+    }
+  );
+  console.log('Using MySQL database');
+}
 
 const User = require('./User')(sequelize, Sequelize);
 const Leave = require('./Leave')(sequelize, Sequelize);
